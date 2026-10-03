@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RAIZEN RACING</title>
+
+<style>
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    overflow: hidden;
+    background: #050505;
+    font-family: Arial, sans-serif;
+    color: white;
+}
+
+canvas {
+    display: block;
+    width: 100vw;
+    height: 100vh;
+}
+
+#menu {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background:
+        radial-gradient(circle, #222 0%, #050505 70%);
+    z-index: 10;
+}
+
+h1 {
+    font-size: 64px;
+    letter-spacing: 8px;
+    text-shadow: 0 0 20px #00eaff;
+}
+
+.subtitle {
+    margin: 10px 0 40px;
+    color: #aaa;
+}
+
+button {
+    width: 260px;
+    padding: 16px;
+    margin: 8px;
+    border: 1px solid #00eaff;
+    background: #071015;
+    color: white;
+    font-size: 18px;
+    cursor: pointer;
+    border-radius: 8px;
+}
+
+button:hover {
+    background: #00eaff;
+    color: black;
+    box-shadow: 0 0 25px #00eaff;
+}
+
+#hud {
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    z-index: 5;
+    display: none;
+}
+
+#speed {
+    font-size: 42px;
+    font-weight: bold;
+}
+
+#nitroBox {
+    width: 250px;
+    height: 18px;
+    border: 2px solid white;
+    margin-top: 8px;
+}
+
+#nitro {
+    width: 100%;
+    height: 100%;
+    background: #00eaff;
+}
+
+#info {
+    position: fixed;
+    right: 20px;
+    top: 20px;
+    text-align: right;
+    display: none;
+}
+</style>
+</head>
+
+<body>
+
+<div id="menu">
+    <h1>RAIZEN</h1>
+    <div class="subtitle">STREET RACING // PC EDITION</div>
+
+    <button onclick="startGame()">INICIAR CORRIDA</button>
+    <button onclick="alert('Use W A S D para dirigir e SHIFT para Nitro!')">
+        CONTROLES
+    </button>
+</div>
+
+<div id="hud">
+    <div id="speed">000 KM/H</div>
+    <div> NITRO </div>
+    <div id="nitroBox">
+        <div id="nitro"></div>
+    </div>
+</div>
+
+<div id="info">
+    <div>RAIZEN GT-R</div>
+    <div>RACE 01</div>
+</div>
+
+<canvas id="game"></canvas>
+
+<script>
+
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+function resize() {
+    canvas.width = innerWidth;
+    canvas.height = innerHeight;
+}
+
+resize();
+window.addEventListener("resize", resize);
+
+let running = false;
+
+let car = {
+    x: 0,
+    y: 0,
+    speed: 0,
+    angle: 0
+};
+
+let nitro = 100;
+
+let keys = {};
+
+document.addEventListener("keydown", e => {
+    keys[e.key.toLowerCase()] = true;
+});
+
+document.addEventListener("keyup", e => {
+    keys[e.key.toLowerCase()] = false;
+});
+
+function startGame() {
+    document.getElementById("menu").style.display = "none";
+    document.getElementById("hud").style.display = "block";
+    document.getElementById("info").style.display = "block";
+
+    car.x = canvas.width / 2;
+    car.y = canvas.height / 2;
+    car.speed = 0;
+
+    running = true;
+    loop();
+}
+
+function update() {
+
+    if (!running) return;
+
+    // Aceleração
+    if (keys["w"]) {
+        car.speed += 0.35;
+    }
+
+    // Freio / ré
+    if (keys["s"]) {
+        car.speed -= 0.25;
+    }
+
+    // Resistência
+    car.speed *= 0.985;
+
+    // Limite
+    if (car.speed > 18) car.speed = 18;
+    if (car.speed < -7) car.speed = -7;
+
+    // Direção
+    if (Math.abs(car.speed) > 0.2) {
+
+        if (keys["a"]) {
+            car.angle -= 0.045 * (car.speed / 8);
+        }
+
+        if (keys["d"]) {
+            car.angle += 0.045 * (car.speed / 8);
+        }
+    }
+
+    // Nitro
+    if (keys["shift"] && nitro > 0 && car.speed > 0) {
+        car.speed += 0.45;
+        nitro -= 0.7;
+    } else {
+        nitro += 0.15;
+    }
+
+    nitro = Math.max(0, Math.min(100, nitro));
+
+    car.x += Math.cos(car.angle) * car.speed;
+    car.y += Math.sin(car.angle) * car.speed;
+
+    // Teleporte nas bordas
+    if (car.x < -50) car.x = canvas.width + 50;
+    if (car.x > canvas.width + 50) car.x = -50;
+
+    if (car.y < -50) car.y = canvas.height + 50;
+    if (car.y > canvas.height + 50) car.y = -50;
+
+    document.getElementById("speed").innerText =
+        Math.floor(Math.abs(car.speed) * 18)
+        .toString()
+        .padStart(3, "0") + " KM/H";
+
+    document.getElementById("nitro").style.width = nitro + "%";
+}
+
+function drawRoad() {
+
+    ctx.fillStyle = "#080808";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // cidade
+    for (let x = 0; x < canvas.width; x += 80) {
+        for (let y = 0; y < canvas.height; y += 80) {
+
+            ctx.fillStyle =
+                ((x + y) / 80) % 2 === 0
+                ? "#101010"
+                : "#151515";
+
+            ctx.fillRect(x, y, 75, 75);
+        }
+    }
+
+    // pista
+    ctx.save();
+
+    ctx.translate(canvas.width / 2, canvas.height / 2);
+
+    ctx.fillStyle = "#292929";
+    ctx.fillRect(-canvas.width / 2, -100, canvas.width, 200);
+
+    ctx.strokeStyle = "#eee";
+    ctx.lineWidth = 4;
+    ctx.setLineDash([30, 30]);
+
+    ctx.beginPath();
+    ctx.moveTo(-canvas.width / 2, 0);
+    ctx.lineTo(canvas.width / 2, 0);
+    ctx.stroke();
+
+    ctx.restore();
+}
+
+function drawCar() {
+
+    ctx.save();
+
+    ctx.translate(car.x, car.y);
+    ctx.rotate(car.angle);
+
+    // sombra
+    ctx.fillStyle = "rgba(0,0,0,.5)";
+    ctx.fillRect(-25, -13, 55, 30);
+
+    // carro
+    ctx.fillStyle = "#00d9ff";
+    ctx.fillRect(-28, -14, 56, 28);
+
+    // teto
+    ctx.fillStyle = "#101820";
+    ctx.fillRect(-13, -11, 25, 22);
+
+    // faróis
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(20, -9, 8, 6);
+    ctx.fillRect(20, 3, 8, 6);
+
+    // lanternas
+    ctx.fillStyle = "#f00";
+    ctx.fillRect(-28, -9, 6, 6);
+    ctx.fillRect(-28, 3, 6, 6);
+
+    ctx.restore();
+}
+
+function draw() {
+
+    drawRoad();
+
+    // efeito de velocidade
+    if (car.speed > 10) {
+
+        ctx.strokeStyle = "rgba(0,220,255,.3)";
+        ctx.lineWidth = 2;
+
+        for (let i = 0; i < 30; i++) {
+
+            let x = Math.random() * canvas.width;
+            let y = Math.random() * canvas.height;
+
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+            ctx.lineTo(
+                x - Math.cos(car.angle) * 40,
+                y - Math.sin(car.angle) * 40
+            );
+            ctx.stroke();
+        }
+    }
+
+    drawCar();
+}
+
+function loop() {
+
+    update();
+    draw();
+
+    if (running) {
+        requestAnimationFrame(loop);
+    }
+}
+
+</script>
+
+</body>
+</html>
